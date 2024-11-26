@@ -1,0 +1,26 @@
+version: 0.2
+phases:
+  install:
+    runtime-versions:
+      python: 3.11
+  pre_build:
+    commands:
+      - curl -s -qL -o terraform_install.zip https://releases.hashicorp.com/terraform/0.11.13/terraform_0.11.13_linux_amd64.zip
+      - unzip terraform_install.zip -d /usr/bin/
+      - chmod +x /usr/bin/terraform
+      - terraform --version
+      - rpm -ivh https://github.com/aquasecurity/trivy/releases/download/v0.20.2/trivy_0.20.2_Linux-64bit.rpm
+      - trivy --version
+  build:
+    commands:
+      - cd $terraform_path
+      - terraform init
+      - terraform validate
+      - trivy --exit-code 1 --ignore-unfixed --severity HIGH,CRITICAL --no-progress --format template --template "@contrib/sarif.tpl" --output trivy-results.sarif terraform.plan
+      - trivy --exit-code 1 --ignore-unfixed --severity HIGH,CRITICAL --no-progress --format cyclonedx --output trivy-results.xml terraform.plan
+      - trivy --exit-code 1 --ignore-unfixed --severity HIGH,CRITICAL --no-progress --format template --template "@contrib/html.tpl" --output trivy-results.html terraform.plan
+      - trivy --exit-code 1 --ignore-unfixed --severity HIGH,CRITICAL --no-progress --format template --template "@contrib/junit.tpl" --output trivy-results.xml terraform.plan
+artifacts:
+  files:
+    - '**/*'
+  name: myname-$(date +%Y-%m-%d) 
